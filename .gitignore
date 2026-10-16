@@ -1,0 +1,22 @@
+# 虚拟环境
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 密钥 —— 绝对不能提交，这条是底线
+.env
+
+# 输出产物（全部是跑出来的结果，可由代码+数据重建）
+output/
+
+# 向量库持久化目录（Chroma 的本地索引，体积大且可重建）
+data/vector_store/
+
+# 测试缓存
+.pytest_cache/
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
