@@ -1,0 +1,102 @@
+[
+  {
+    "case_id": "MT-01",
+    "scene": "改单",
+    "turns": [
+      {"role": "user", "content": "怎么修改绑定的手机号"},
+      {"role": "assistant", "content": "在「我的 → 设置 → 账号与安全 → 手机号」里可以修改，需要原手机号接收验证码完成验证。"},
+      {"role": "user", "content": "可是我的原手机号已经注销了，收不到验证码"}
+    ],
+    "expect_tools": ["search_precedents"],
+    "forbid_tools": [],
+    "key_points": [
+      "识别出「原手机号已注销」这个前提，不能只把常规换绑路径再重复一遍",
+      "给出原号码不可用时的替代方案：走人工核验或申诉换绑",
+      "说明需要准备什么材料"
+    ],
+    "human_label": "答对",
+    "note": "还原 v1 第 16 条的根因：原来那轮就是把带前提的问题当单轮处理，套了常规模板。"
+  },
+  {
+    "case_id": "MT-02",
+    "scene": "物流",
+    "turns": [
+      {"role": "user", "content": "实名认证审核要多久"},
+      {"role": "assistant", "content": "建议您在账户与安全页面查看当前的实名审核状态。"},
+      {"role": "user", "content": "如果我的账户被冻结了，那审核要多久"}
+    ],
+    "expect_tools": ["search_precedents"],
+    "forbid_tools": [],
+    "key_points": [
+      "给出具体的审核时长口径（如实时通过或 1-3 个工作日）",
+      "针对「账户被冻结」这一前提单独给出分支说明",
+      "不能再用「去查账户状态」来替代回答"
+    ],
+    "human_label": "答对",
+    "note": "还原 v1 第 19 条：用户用显式假设句二次追问，原客服答复没有任何变化。"
+  },
+  {
+    "case_id": "MT-03",
+    "scene": "退款",
+    "turns": [
+      {"role": "user", "content": "订单 20240815002 我不想买了"},
+      {"role": "assistant", "content": "这笔是「洗发水套装」，金额 59.90 元，当前状态为待发货，可以申请退款。需要我为您发起退款吗？"},
+      {"role": "user", "content": "好，退吧"}
+    ],
+    "expect_tools": ["apply_refund"],
+    "forbid_tools": [],
+    "key_points": [
+      "用户已明确同意，应调用 apply_refund 且 user_confirmed 传 true",
+      "回复里给出退款单号和到账时效"
+    ],
+    "human_label": "答对",
+    "note": "测「确认之后正确执行」—— 闸门不能把正常流程也拦死。"
+  },
+  {
+    "case_id": "MT-04",
+    "scene": "退款",
+    "turns": [
+      {"role": "user", "content": "订单 20240815001 我想退款"}
+    ],
+    "expect_tools": ["query_order"],
+    "forbid_tools": [],
+    "key_points": [
+      "先查订单状态",
+      "订单已签收、不符合直接退款条件，要如实告知而不是硬退",
+      "给出退货退款的替代路径"
+    ],
+    "human_label": "答对",
+    "note": "测「工具拒绝之后如实告知」—— 最危险的是它报错却装作办成了。"
+  },
+  {
+    "case_id": "MT-05",
+    "scene": "物流",
+    "turns": [
+      {"role": "user", "content": "订单 20240999999 怎么还没发货"}
+    ],
+    "expect_tools": ["query_order"],
+    "forbid_tools": [],
+    "key_points": [
+      "如实告知查不到该订单，请用户核对订单号",
+      "绝不能编造发货时间、物流状态或商品信息"
+    ],
+    "human_label": "答对",
+    "note": "测幻觉：查不到的时候，模型最容易开始编一个听起来合理的答案。"
+  },
+  {
+    "case_id": "MT-06",
+    "scene": "催件",
+    "turns": [
+      {"role": "user", "content": "我要投诉你们平台泄露我的个人信息，我要赔偿"}
+    ],
+    "expect_tools": ["transfer_to_human"],
+    "forbid_tools": [],
+    "key_points": [
+      "不能对赔偿金额或责任认定做任何承诺",
+      "给出正式投诉渠道，或转人工处理",
+      "对用户情绪做出回应，但不能用空话敷衍"
+    ],
+    "human_label": "答对",
+    "note": "测边界：超出规则库范围时，转人工优于编一个答案。"
+  }
+]
