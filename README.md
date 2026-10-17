@@ -1,6 +1,12 @@
-# AI 客服质量评测台
+# AI 客服质量评测台 · AI Customer Service Evaluator
 
-**一句话：它是一台质检机，外加一个专门用来被质检的 AI 客服。**
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![tests](https://img.shields.io/badge/pytest-37%20passed-2EA043)
+![kappa](https://img.shields.io/badge/Cohen%27s%20Kappa-0.9231-1A5C9E)
+![license](https://img.shields.io/badge/license-MIT-black)
+![docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87-important)
+
+**一台给 AI 客服打分的质检机，外加一个专门用来被质检的 AI 客服。**
 
 质检机（v1）干的是给客服回复打分：30 条真实问答记录进来，逐条判「答对 / 答偏」，
 给出错因，再用人工标注验证「机器判得准不准」（Kappa 0.9231）。
@@ -14,12 +20,55 @@ AI 客服（v2/v3）是后来加的：为了证明这套质检标准真的能指
 
 ---
 
+## 30 秒版
+
+| 问题 | 答案 |
+|---|---|
+| 这是什么 | 用 30 条真实客服问答，把「答偏」量化、定位到具体故障层，再把结论写成代码 |
+| 质检机准不准 | 与人工标注一致率 **96.7%**、Cohen's Kappa **0.9231**（扣掉「瞎猜也能蒙对」的部分后仍高度吻合）|
+| Agent 做到什么 | 同一批 30 条答对 **30/30**（原客服 21/30），修好 9 条、弄坏 0 条 |
+| 怎么证明是改动起效 | 四组对照实验：拿掉知识库掉到 **4/30**；删掉 10 条规则测泛化，剩 **5/10** |
+| 能不能复现 | 37 个单元测试 + 21 项离线自检，**不联网、不花钱**，三条命令验完环境 |
+
+### 四个版本，一张表
+
+| 版本 | 关键改动 | Agent 答对 | 转人工 | 平均轮数 |
+|---|---|---|---|---|
+| v2 | 手写 ReAct 主循环 + 6 个工具 + 判例检索 | —（换了尺子） | 16/30 | 2.5 |
+| v3 | 补业务规则知识库（BM25 中文 bigram 自实现）| 29/30 | 0/30 | 1.97 |
+| v3.1 | 加第 4 层护栏：规则类问题没查资料就打回重查 | **30/30** | 0/30 | 2.03 |
+| v3 − 知识库 | 对照：把知识库整个拿走 | **4/30** | 24/30 | 3.5 |
+
+### 想找什么，从哪进
+
+| 你的目的 | 从哪看 |
+|---|---|
+| 10 秒判断这项目靠不靠谱 | 上面两张表 + 下面的「核心结论」 |
+| 自己跑一遍 | [3 分钟跑起来](#3-分钟跑起来不花钱不联网)（不联网、不花钱）|
+| 读懂代码 | [`docs/ONBOARDING.md`](docs/ONBOARDING.md)：按数据流分层讲，不按文件名 |
+| 这些数字怎么来的、会不会是编的 | [`docs/VERIFY.md`](docs/VERIFY.md)：五层验证，从免费自检到留出实验 |
+| 为什么这么设计、试错过程 | [`docs/ABLATION.md`](docs/ABLATION.md)：四组对照实验完整记录 |
+| 踩过的坑和失败复盘 | [「最后那一条：从答错到答错得很像对的」](#最后那一条从答错到答错得很像对的) |
+
+---
+
 ## 3 分钟跑起来（不花钱、不联网）
+
+```bash
+git clone https://github.com/Wenaxis/ai-cs-evaluator.git
+cd ai-cs-evaluator
+python -m venv .venv
+# Windows
+.venv\Scripts\python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+# macOS / Linux
+# .venv/bin/python -m pip install -r requirements.txt
+```
+
+> 首次装依赖要几分钟 —— `chromadb` 那一坨不小。装完之后，下面这三条都是秒级。
 
 **PowerShell 里第一行必须设编码**，否则中文全是乱码（`chcp 65001` 不管用，实测过）：
 
 ```powershell
-cd D:\BaiduNetdiskDownload\2026-10-17-00-56-05\ai-cs-evaluator
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 .venv\Scripts\python.exe -m pytest tests\ -q          # 37 个测试
@@ -30,17 +79,9 @@ cd D:\BaiduNetdiskDownload\2026-10-17-00-56-05\ai-cs-evaluator
 Git Bash 里不用设编码，路径换个写法即可：
 
 ```bash
-cd /d/BaiduNetdiskDownload/2026-10-17-00-56-05/ai-cs-evaluator
 .venv/Scripts/python.exe -m pytest tests/ -q
 .venv/Scripts/python.exe scripts/selfcheck.py
 .venv/Scripts/python.exe -m src.analyze
-```
-
-`.venv` 已经建好了，不用重新 `python -m venv`。换电脑或删了才需要重建：
-
-```powershell
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
 
 这三条跑通，说明环境、代码、数据都没问题。**跑不通就是环境问题，不是 Key 问题。**
@@ -170,7 +211,7 @@ ai-cs-evaluator/
 │   │   ├── rerank.py                #   LLM 重排（v2.1 新增）
 │   │   ├── hybrid.py                #   双路召回 + RRF 融合（v2.1 新增）
 │   │   ├── tools.py                 #   6 个工具：schema + mock 实现
-│   │   ├── cs_agent.py              #   手写 ReAct 主循环 + 三层护栏
+│   │   ├── cs_agent.py              #   手写 ReAct 主循环 + 四层护栏
 │   │   ├── graph_agent.py           #   LangGraph 版编排（v2.1 新增）
 │   │   └── trace.py                 #   执行轨迹落盘
 │   ├── eval/                        # [M8] 评测体系（v2.1 独立成包）
@@ -305,7 +346,7 @@ v2 就是这一步。
 | ------------------------ | ----------------- | ---------------- |
 | `src/agent/retrieval.py` | 判例检索（BM25）        | RAG              |
 | `src/agent/tools.py`     | 5 个工具的 schema 与实现 | function calling |
-| `src/agent/cs_agent.py`  | ReAct 主循环 + 三层护栏  | Agent 编排         |
+| `src/agent/cs_agent.py`  | ReAct 主循环 + 四层护栏  | Agent 编排         |
 | `src/agent/trace.py`     | 执行轨迹落盘            | 可观测性             |
 | `src/llm_client.py`      | 统一模型调用层           | 基础设施             |
 | `src/runner.py`          | 测试执行器 + 过程指标      | 自动化回归            |

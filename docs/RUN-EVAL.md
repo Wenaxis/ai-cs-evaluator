@@ -51,7 +51,7 @@ v3 之后这两个数会打架 —— 第 8 步专门解释为什么，那是这
 打开终端（PowerShell 或 Git Bash 都行），进到项目目录：
 
 ```bash
-cd "D:/BaiduNetdiskDownload/2026-10-17-00-56-05/ai-cs-evaluator"
+cd ai-cs-evaluator        # 换成你自己 clone 到的地方
 ```
 
 **怎么确认进对了**：敲 `ls`，输出里必须能同时看到 `README.md` 和 `requirements.txt`。
