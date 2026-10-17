@@ -1,10 +1,10 @@
 # AI 客服质量评测台 · AI Customer Service Evaluator
 
-![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
-![tests](https://img.shields.io/badge/pytest-37%20passed-2EA043)
-![kappa](https://img.shields.io/badge/Cohen%27s%20Kappa-0.9231-1A5C9E)
-![license](https://img.shields.io/badge/license-MIT-black)
-![docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87-important)
+![Python](docs/assets/badges/python.svg)
+![tests](docs/assets/badges/tests.svg)
+![kappa](docs/assets/badges/kappa.svg)
+![license](docs/assets/badges/license.svg)
+![docs](docs/assets/badges/docs.svg)
 
 **一台给 AI 客服打分的质检机，外加一个专门用来被质检的 AI 客服。**
 
