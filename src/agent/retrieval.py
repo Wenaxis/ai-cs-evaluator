@@ -127,8 +127,8 @@ class PrecedentIndex:
     def search(
         self,
         query: str,
+        exclude_id: int | None,
         k: int = 3,
-        exclude_id: int | None = None,
         scene: str | None = None,
         min_score: float = 0.0,
     ) -> list[dict]:
@@ -136,6 +136,10 @@ class PrecedentIndex:
 
         exclude_id 必须由调用方显式传入（评测本轮问题时要排除它自己）。
         这里不给默认值，就是为了让「忘了防泄漏」这件事在代码上不可能发生。
+
+        注：这个参数原来带 `= None`，但注释写着「不给默认值」—— 注释和行为对不上。
+        是 `scripts/selfcheck.py` 把这条不一致抓出来的，后来把参数顺序调到 k 前面去掉了默认值。
+        现在真忘了传会直接 TypeError，而不是悄悄泄漏答案。
 
         scene 过滤如果过滤到一条都不剩，就自动放宽 —— 宁可返回跨场景的参考，
         也不要让 Agent 两手空空。

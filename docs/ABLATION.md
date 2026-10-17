@@ -184,6 +184,26 @@ README 里写过一段：「30 条里 21 条答对，一个永远输出答对的
 
 **原客服答偏的那 9 条，Agent 全部答对了**（#1、5、8、16、18、19、22、23、24）。
 
+只弄坏了 1 条：**#25「转人工客服要怎么操作」**。这条值得单独说。
+
+一开始我把它归成「量表盲点」——量表写了「只给转人工入口判 1 分」，没考虑用户诉求本来就是转人工的情形。
+后来把工具链打出来才看清：
+
+```
+#25  转人工客服要怎么操作
+工具：（没调工具）   轮数：1
+转人工可以直接在这里帮你转，不用你自己操作。
+```
+
+**它一轮就答了，压根没查知识库。** 而知识库里有「如何转人工客服」这条规则，检索得分 48.39，
+排在全库中上。查一下就能照着答。
+
+所以这不是检索能力问题，是**判断失误**：在它的自我认知里，「转人工」是它自己的动作，不用查资料。
+量表判「未答核心」判对了。
+
+这个模式的隐蔽之处在于所有指标都不报错 —— 工具调用 0 次，成功率仍是 100%，只有把工具链打出来才看得见。
+验证方法见 [`VERIFY.md`](VERIFY.md) 第二层。
+
 一个必须同时说的代价：**一致率只涨到 66.7%，Kappa 还是负的（−0.0638）**。
 不是没改好，是这把尺子已经不该用来量 Agent 了 —— 原因见下一节。
 
@@ -211,6 +231,117 @@ Agent 把原客服答偏的 9 条答对了 → 机器判「答对」→ 与标�
 
 ---
 
+## 四之三、第三组：把知识库拿走
+
+上面那个 96.7% 有个致命的解释漏洞：**它可能跟知识库没关系。**
+
+v3 同时改了三样东西 —— 新建知识库、加 `search_knowledge` 工具、改 prompt 让 Agent 先查规则。
+三个一起改，分数涨了，但不能说功劳是知识库的。也许是 prompt 改得更会说话了，
+也许是这个模型本来就答得出这些题（deepseek-v4-flash 训练语料里支付宝的常见问题不少）。
+
+要排除这个解释，只有一个办法：**只动一个变量。**
+
+### 怎么做的
+
+把 `data/knowledge/cs_rules.json` 改个后缀，让代码找不到它：
+
+```bash
+mv data/knowledge/cs_rules.json data/knowledge/cs_rules.json.bak
+```
+
+代码一行没改，prompt 一个字没动，模型没换，测试集没换。
+先确认 `KnowledgeBase()` 真的会抛 `FileNotFoundError`（跑到一半才发现没真正禁掉，就白跑了），
+然后重跑 `runner` → `judge` → `report_v3`。
+
+### 结果
+
+| 指标 | v3 有知识库 | 拿掉知识库 | 变化 |
+|---|---|---|---|
+| **Agent 答对** | **29 / 30（96.7%）** | **4 / 30（13.3%）** | −25 条 |
+| 转人工 | 0 | **24 条（80%）** | +24 |
+| 未答核心（`unanswered_core`） | 1 | **25** | +24 |
+| 工具成功率 | 100% | **64.6%** | −35.4pt |
+| 平均轮数 | 1.97 | **3.5** | +1.5 |
+| 修好（原客服答偏→Agent 答对） | **9** | 2 | −7 |
+| 弄坏（原客服答对→Agent 答偏） | 1 | **19** | +18 |
+| 编造信息 | 0 | 2 | +2 |
+| 与原客服一致率 | 66.7% | 30.0% | −36.7pt |
+
+**答对率从 96.7% 掉到 13.3%。** 同一份代码、同一个模型、同一句 prompt。
+
+### 掉下去的过程值得看一眼
+
+拿掉知识库后，Agent 并没有「变笨」——它还是在努力查。29 条用例里它尝试调 `search_knowledge` 29 次，
+每一次都失败，错误信息是同一句：
+
+```
+知识库未加载
+```
+
+29 次失败正好等于 `tool_calls_failed: 29` 和 `tool_success_rate: 64.6%` 的分子。
+
+然后它的行为链条是这样的：
+
+1. 查知识库 → 失败
+2. 改查判例库 → 能查到，但判例只有「这道题该怎么答」的叙述，没有事实口径
+3. prompt 准则 2 说「不要凭常识编」→ 它守住了，没有编
+4. 准则 6 说「查不到就转人工」→ 24 条转人工
+
+**这不是能力退化，是数据供给断了之后，一个诚实的 Agent 唯一能做的事。**
+
+它跟 v2 那个 33.3% 是同一个病：没有事实来源，只能推给人。
+区别只是 v2 里判例库还有一点点残留信息（33.3%），这次连那点都没有（13.3%）。
+
+### 这一组实验顺手暴露了一个指标 bug
+
+跑完第一版对照，`agent_metrics.json` 里赫然写着：
+
+```
+知识库使用率        96.7%（29 条）
+```
+
+**知识库文件已经被移走了，显示使用率 96.7%。**
+
+原因在统计口径：原来写的是「这条会话的 `tool_names` 里有没有 `search_knowledge`」——
+`tool_names` 只记调用过什么，不记成功没有。Agent 每轮都尝试查，每次失败，
+名字还是进了列表，于是「用过」成立。
+
+已经改成只数成功的（`src/eval/runner.py` 的 `_used_ok()`）：
+
+```python
+def _used_ok(trace: Trace, tool: str) -> bool:
+    return any(c.get("name") == tool and c.get("ok") for c in trace.tool_calls)
+```
+
+新口径下三组数据：
+
+| 组 | 知识库成功调用 | 判例库成功调用 |
+|---|---|---|
+| v3（有知识库） | 29 | 6 |
+| 无知识库 | **0** | 29 |
+| 原版 prompt（还没知识库） | 0 | 29 |
+
+`0` 才是这一组该有的数。
+
+这件事的教训比实验本身更值得记：**一个只会涨的指标，比没有指标更危险。**
+它不报错、不告警，只在你想验证自己没错的时候，告诉你「你没错」。
+
+### 现在的结论
+
+96.7% 的因果链是干净的：
+
+```
+知识库存在 → Agent 查得到事实口径 → 敢答 → 答对 29 条
+知识库不存在 → Agent 查不到 → 守住「不编」→ 转人工 24 条 → 答对 4 条
+```
+
+只有一步之遥是没验的：**知识库的质量。** 这 30 条规则是我从实测记录里提炼的，
+如果提炼时把某条口径写错了，Agent 会自信地答错，而上面所有指标都看不出来。
+要验这个，得拿真实客服文档逐条对，那是另一件事。
+
+---
+
+
 ## 五、附带发现的两个问题
 
 ### 问题 1：runner 只跑了 30 条，不是 36 条
@@ -235,15 +366,43 @@ Agent 把原客服答偏的 9 条答对了 → 机器判「答对」→ 与标�
 
 ## 六、怎么复现
 
+三组实验的共同点：**每次只动一个变量。**
+
 ```bash
-# A 组：原版 prompt
+# 组 A：原版 prompt（严格约束，无知识库）
+git checkout <v2 那个 commit>   # 或按第三节描述把准则 2、6 改回去
 .venv/Scripts/python.exe -m src.eval.runner
 .venv/Scripts/python.exe -m src.eval.judge
 
-# B 组：把 cs_agent.py 的 SYSTEM_PROMPT 准则 2、6 按第三节描述放宽，重跑上面两条
+# 组 B：同 A，但把准则 2、6 放宽
+.venv/Scripts/python.exe -m src.eval.runner
+.venv/Scripts/python.exe -m src.eval.judge
+
+# 组 C：v3 原样，只把知识库文件移走
+mv data/knowledge/cs_rules.json data/knowledge/cs_rules.json.bak
+.venv/Scripts/python.exe -m src.eval.runner
+.venv/Scripts/python.exe -m src.eval.judge
+.venv/Scripts/python.exe -m src.eval.report_v3
+mv data/knowledge/cs_rules.json.bak data/knowledge/cs_rules.json
+
+# 组 D：v3 原样（有知识库）—— 就是默认跑法
+.venv/Scripts/python.exe -m src.eval.runner
+.venv/Scripts/python.exe -m src.eval.judge
+.venv/Scripts/python.exe -m src.eval.report_v3
 ```
 
-两次结果都在 `output/` 下。要做对比，跑之前先把 `traces.json`、`agent_metrics.json`、
-`agent_judge_results.json` 各存一份。
+**跑之前先把结果存一份**，否则下一组会覆盖。要备份的是四个文件：
 
-**注意**：`scripts/mock_run.py` 会覆盖 `traces.json`，别在两次实验之间跑它。
+```
+output/traces.json
+output/agent_metrics.json
+output/agent_judge_results.json
+output/agent_quality_report.json
+```
+
+本次三组的原始数据留在 `output/working/ablation/`（`*-oldprompt.json` / `*-v3.json` / `*-noKB.json`），
+可以直接拿来做对比，不必重跑。
+
+**注意**：`scripts/mock_run.py` 会覆盖 `traces.json`，别在两组实验之间跑它。
+
+更细的四层验证方法（含不花钱的静态检查、怎么看回答原文）见 [`VERIFY.md`](VERIFY.md)。

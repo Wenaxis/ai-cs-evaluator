@@ -11,6 +11,9 @@
 >
 > **第一次大约 40 分钟**（其中 20 分钟在申请 Key），**之后每次重跑 10 分钟左右**。
 > **按本文的路线走，一分钱不花。**
+>
+> 跑完之后还有一步值得做：**验证这些数字是不是真的因为你的改动**。
+> 见 [`VERIFY.md`](VERIFY.md)（对应本文第 13 步）。
 
 ---
 
@@ -68,12 +71,67 @@ ModuleNotFoundError: No module named 'src'
 
 ---
 
-## 第 2 步 · 三条不花钱的自检
+## 第 2 步 · 四条不花钱的自检
 
-这三条都不联网、不花额度。**先全部跑通，再去申请 Key。**
+这四条都不联网、不花额度。**先全部跑通，再去申请 Key。**
 这样如果后面报错，你可以确定问题一定出在 Key 或网络上，不用怀疑代码。
 
-### 2.1 单元测试
+### 2.1 代码状态自检（3 秒）
+
+```bash
+.venv/Scripts/python.exe scripts/selfcheck.py
+```
+
+你应该看到（实测输出，18 项全过）：
+
+```
+AI 客服评测台 · 自检
+不联网、不花钱、几秒跑完。全过了再去跑真评测。
+
+[1/6] 知识库文件
+      OK   cs_rules.json 存在
+      OK   能构造 KnowledgeBase
+      OK   规则条数 > 0：30 条
+      OK   来源分布：measured 21 / supplemented 9
+      OK   场景分布：改单 8 / 服务 7 / 账户 7 / 退款 8
+
+[2/6] 知识库检索覆盖
+      OK   30 条问题都能检索到规则：命中率 30/30
+      OK   得分区间：25.73 ~ 63.29（低分那条是 #24「投诉之后多久会有回复」→ 投诉后的回复时限）
+
+[3/6] 工具注册
+      OK   search_knowledge 已注册
+      OK   search_precedents 已注册
+      OK   search_knowledge 排在工具表第一位：模型看工具是按顺序看的
+      OK   ToolRuntime 接受 kb=None 并自动加载
+
+[4/6] prompt 准则
+      OK   有「先查知识库」的指引
+      OK   有「转人工」的兜底说明
+      OK   有「不许编」的约束
+
+[5/6] 防答案泄漏
+      OK   exclude_id 是必传参数（没有默认值）
+
+[6/6] 知识 / 判例分工
+      OK   知识库不参与 leave-one-out（没有 exclude_id）
+      OK   知识库条目里没有 answer 字段
+      OK   判例库参与 leave-one-out
+
+========================================================
+结论：18/18 项通过
+```
+
+它检查的是「代码是不是我以为的那样」——知识库在不在、检索能不能命中、工具注册了没、
+prompt 准则还在不在、防泄漏那根栏杆是不是还在。
+
+加 `--table` 会多打一张 30 行的检索对照表（问题 → 命中的规则主题），人眼扫十几秒就能确认
+知识库没答非所问。这比任何检索指标都可靠。
+
+> 这个脚本第一次跑就抓到一处问题：`retrieval.py` 里 `exclude_id` 的注释写着「不给默认值」，
+> 签名上却写着 `= None`。已经修了。详见 [`VERIFY.md`](VERIFY.md) 第一层。
+
+### 2.2 单元测试
 
 ```bash
 .venv/Scripts/python.exe -m pytest tests/ -q
@@ -94,7 +152,7 @@ ModuleNotFoundError: No module named 'src'
 > .venv/Scripts/python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 > ```
 
-### 2.2 离线冒烟测试（不联网、不花钱）
+### 2.3 离线冒烟测试（不联网、不花钱）
 
 ```bash
 .venv/Scripts/python.exe scripts/mock_run.py
@@ -127,7 +185,7 @@ ModuleNotFoundError: No module named 'src'
 > 我写这份文档时就踩了这个坑。因为 `output/` 在 `.gitignore` 里，仓库里没有真数据，所以这次没损失；
 > 但你以后真跑完之后，别再随手跑 `mock_run`。真要跑，先手动备份 `output/traces.json`。
 
-### 2.3 复现 v1 基线（不联网、不花钱）
+### 2.4 复现 v1 基线（不联网、不花钱）
 
 ```bash
 .venv/Scripts/python.exe -m src.analyze
@@ -752,9 +810,37 @@ v2 是建在 v1 上的。如果面试要你讲「Kappa 是怎么算出来的」�
 
 ---
 
+## 第 13 步 · 验证你改的东西真的有用（可选，但最值钱）
+
+到这里你已经能跑出 29/30。但那只能说明「这一次跑得好」。
+
+**同一个分数至少有三种解释**：改动真有用 / 这个模型本来就行 / 量表太松。
+光看分数分不出是哪一种，而面试官一定会问。
+
+完整方法在 [`VERIFY.md`](VERIFY.md)，四层，从免费到花钱。最省事的两条先跑：
+
+```bash
+# 看回答原文（0 元）—— 分数是压缩过的，压掉的正好是你最想知道的
+.venv/Scripts/python.exe scripts/show_answer.py --id 7,25
+
+# 只看「修好 / 弄坏」的（0 元）
+.venv/Scripts/python.exe scripts/show_answer.py --diff
+```
+
+`--diff` 会打出 10 条：9 条修好的（#1、5、8、16、18、19、22、23、24），1 条弄坏的（#25）。
+
+**去读 #25 那条的工具链。** 它写的是「（没调工具）」——
+一轮就答了，压根没查知识库。而知识库里明明有「如何转人工客服」这条规则。
+这条是整个项目里最值得讲的一个失败：不是检索不到，是它判断「这次不用查」。
+
+真要证明因果，就做第四层：把 `data/knowledge/cs_rules.json` 移走重跑。
+答对率会从 96.7% 掉到 13.3%，24 条转人工 —— 那才叫证明了。
+
+---
+
 ## 跑完之后的检查清单
 
-跑通了，自己确认这五条，都过了才算真的跑明白：
+跑通了，自己确认这几条，都过了才算真的跑明白：
 
 - [ ] 不看文档能说出 `runner` 和 `judge` 的分工（一个跑 Agent 收轨迹，一个读轨迹打分）
 - [ ] 知道 `skipped_retrieval` 为什么比「答错」更值得警惕
@@ -764,6 +850,7 @@ v2 是建在 v1 上的。如果面试要你讲「Kappa 是怎么算出来的」�
 - [ ] 能说明「准确率 70% 但 Kappa 0」意味着什么
 - [ ] 能说清 `--limit 3` 是干什么的、为什么要先跑 3 条
 - [ ] 知道 `output/traces.json` 会被 `mock_run.py` 覆盖
+- [ ] 能说出怎么证明「96.7% 是知识库带来的」，而不是只说分数
 
 ---
 

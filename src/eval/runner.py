@@ -95,6 +95,17 @@ def classify_exit(trace: Trace, question: str) -> str:
     return "normal"
 
 
+def _used_ok(trace: Trace, tool: str) -> bool:
+    """这条会话有没有**成功**调用过某个工具。
+
+    只数调用次数是不够的。做「拿掉知识库」对照时踩到了：
+    Agent 照样每轮都尝试检索，29 次调用 29 次失败（错误原文「知识库未加载」），
+    但按「调过就算用过」的算，知识库使用率还是 96.7% —— 一个根本不存在的知识库，
+    显示被用上了。数字好看，方向是错的，比没有指标更危险。
+    """
+    return any(c.get("name") == tool and c.get("ok") for c in trace.tool_calls)
+
+
 def compute_metrics(traces: list[Trace], records: list[dict]) -> dict:
     """汇总过程指标。"""
     n = len(traces)
@@ -121,15 +132,13 @@ def compute_metrics(traces: list[Trace], records: list[dict]) -> dict:
         ),
         "guard_blocks": guards,
         # v3：知识库和判例库分开统计。两者分工不同，混在一起看不出 Agent 到底在靠什么答。
-        "knowledge_used": sum(1 for t in traces if "search_knowledge" in t.tool_names),
+        "knowledge_used": sum(1 for t in traces if _used_ok(t, "search_knowledge")),
         "retrieval_used": sum(
             1
             for t in traces
-            if {"search_knowledge", "search_precedents"} & set(t.tool_names)
+            if _used_ok(t, "search_knowledge") or _used_ok(t, "search_precedents")
         ),
-        "precedents_used": sum(
-            1 for t in traces if "search_precedents" in t.tool_names
-        ),
+        "precedents_used": sum(1 for t in traces if _used_ok(t, "search_precedents")),
         "escalated": sum(1 for t in traces if t.stopped_reason == "human"),
         "exit_dist": {label: labels.count(label) for label in sorted(set(labels))},
         "questions_with_reference": len(by_id),
