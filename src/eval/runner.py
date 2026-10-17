@@ -131,6 +131,8 @@ def compute_metrics(traces: list[Trace], records: list[dict]) -> dict:
             round(1 - failed_tools / total_tools, 4) if total_tools else 1.0
         ),
         "guard_blocks": guards,
+        # 护栏 4 打回了几次。这个数越小越好 —— 它涨起来说明模型越来越倾向裸答。
+        "nudges": sum(1 for t in traces if any(s.kind == "nudge" for s in t.steps)),
         # v3：知识库和判例库分开统计。两者分工不同，混在一起看不出 Agent 到底在靠什么答。
         "knowledge_used": sum(1 for t in traces if _used_ok(t, "search_knowledge")),
         "retrieval_used": sum(
@@ -219,6 +221,7 @@ def main() -> int:
     print(f"  工具调用总数        {metrics['tool_calls_total']}（平均 {metrics['avg_tool_calls']} 次/条）")
     print(f"  工具成功率          {metrics['tool_success_rate']:.1%}")
     print(f"  安全闸门拦截        {metrics['guard_blocks']} 次")
+    print(f"  裸答打回            {metrics.get('nudges', 0)} 次")
     print(f"  调用了知识库        {metrics.get('knowledge_used', 0)} 条")
     print(f"  调用了判例库        {metrics.get('precedents_used', 0)} 条")
     print(f"  至少查过一次        {metrics['retrieval_used']} 条")

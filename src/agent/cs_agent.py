@@ -28,18 +28,23 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 
 from src.agent.tools import TOOL_SCHEMAS, ToolRuntime
 from src.agent.trace import Trace
-from src.config import AGENT_MAX_ROUNDS, AGENT_TEMPERATURE
+from src.config import (
+    AGENT_MAX_ROUNDS,
+    AGENT_TEMPERATURE,
+    RULE_QUESTION_RE_PATTERN,
+)
 from src.llm_client import LLMError, UsageMeter, chat
 
 
 # ============================================================
 # 一、行为准则
 # ============================================================
-# 注意：这七条不是凭空写的，每一条都对应 v1 那份评分量表里的一条判据。
+# 注意：这八条不是凭空写的，每一条都对应 v1 那份评分量表里的一条判据。
 # v1 用它们来「评」别人的客服用它们来「做」。
 # 一个评测标准能指导生产，才算真的想明白了 —— 这是 v1 和 v2 之间的逻辑闭环。
 
@@ -76,7 +81,38 @@ SYSTEM_PROMPT = """你是支付宝「我的客服」的智能客服，负责解�
 
 7. 长度不是优点。
    用户要的是解决问题，不是一段客气的废话。不要为了显得周全而堆砌无关信息。
+
+8. 分清「问怎么做」和「让你去做」。
+   用户问「怎么转人工」「怎么申请退款」，问的是**路径**，不是让你立刻执行这个动作。
+   先把路径讲清楚；只有用户明确说「帮我转」「帮我退」，才算进入执行流程。
+   这类判断最容易错在「你手上正好有对应工具」的动作上 ——
+   看到那几个字就去调工具，等于上来就动手，而用户真正问的（在哪里操作、需要什么）
+   反而一个字没答。手上的工具越顺手，越要先确认这是不是用户要的。
 """
+
+# ---- 护栏 4：规则类问题不许裸答 ----
+#
+# 准则 2 和 8 是软约束，模型可以不听。v3 跑完发现它真的会不听：
+# #25「转人工客服要怎么操作」第一轮 0 次工具调用，直接凭记忆答了。
+#
+# 答得还挺像回事 —— 给了电话、给了 App 路径、还问了「要不要我帮你转」，
+# judge 给了 5 分。但知识库里写的是「对话页点转人工按钮，服务时间 9:00-24:00」，
+# 它答的是「电话 95188，8:00-24:00」。时间错了。
+#
+# 这就是把软约束变成硬约束的理由：**凭记忆答，错得不明显，分数还好看。**
+# 代码兜住这一层，只花一次多余的检索，比在客户面前把时间说错便宜得多。
+#
+# 只打回一次。第二次还不查，就让它答 —— 说明它确实判断不需要，
+# 硬拧会把它拧成复读机。这时 skipped_retrieval 标签照打，账要记着。
+
+_RULE_Q_RE = re.compile(RULE_QUESTION_RE_PATTERN)
+
+_NUDGE_TEXT = (
+    "这条问题是在问规则或操作路径，但你刚才没有查任何资料就作答了。\n"
+    "请先调用 search_knowledge 查相关条款，按条款里的口径回答；\n"
+    "知识库没覆盖，再调用 search_precedents 看看有没有可借鉴的表达。\n"
+    "具体的时间、金额、入口路径不要凭记忆给 —— 记忆里的口径经常是过时的版本。"
+)
 
 
 class CSAgent:
@@ -122,6 +158,8 @@ class CSAgent:
 
         tools_enabled = True
         escalated = False          # 是否已经转人工。转人工是终态，不能被后续回答冲掉
+        nudged = False             # 护栏 4 是否已经打回过一次
+        retrieved = False          # 是否**成功**查过知识库或判例库
         final_answer = ""
         stopped_reason = "max_rounds"
 
@@ -146,8 +184,28 @@ class CSAgent:
             self.meter.add(resp.usage)
             trace.add_llm(round_no, resp.content, resp.tool_calls, resp.usage, elapsed)
 
-            # ---- 2. 模型没有要调工具 = 它认为可以答了，循环到此为止 ----
+            # ---- 2. 模型没有要调工具 = 它认为可以答了 ----
             if not resp.wants_tool:
+                # 护栏 4 打回：规则类问题，一次资料都没查就想直接答。
+                # 留一轮余地，不然最后一轮打回等于把它逼死在 max_rounds 上。
+                if (
+                    not escalated
+                    and not nudged
+                    and not retrieved
+                    and round_no < self.max_rounds
+                    and _RULE_Q_RE.search(question)
+                ):
+                    nudged = True
+                    trace.add_mark(
+                        "nudge",
+                        round_no,
+                        reason="规则类问题未检索就想直接回答",
+                        drafted=resp.content,
+                    )
+                    messages.append({"role": "assistant", "content": resp.content or ""})
+                    messages.append({"role": "user", "content": _NUDGE_TEXT})
+                    continue
+
                 final_answer = (resp.content or "").strip()
                 if escalated:
                     # 已经转人工了：这一句只是收尾话术，不改「终态」的性质。
@@ -194,6 +252,14 @@ class CSAgent:
                     tools_enabled = False
                     escalated = True
                     stopped_reason = "human"
+
+                # 记「真的查到东西了」。护栏 4 只认成功，不认尝试 ——
+                # 工具报错也算「查过」的话，知识库没加载时这条护栏就废了。
+                if (
+                    call["name"] in {"search_knowledge", "search_precedents"}
+                    and result.get("ok")
+                ):
+                    retrieved = True
 
         trace.final_answer = final_answer
         trace.stopped_reason = stopped_reason

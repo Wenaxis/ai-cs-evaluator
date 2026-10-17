@@ -55,7 +55,7 @@ def check_knowledge_file() -> None:
     from src.agent.knowledge import KnowledgeBase
     from src.config import KNOWLEDGE_JSON
 
-    section(1, 6, "知识库文件")
+    section(1, 7, "知识库文件")
 
     if not KNOWLEDGE_JSON.exists():
         check(False, "cs_rules.json 存在", f"找不到 {KNOWLEDGE_JSON}")
@@ -92,7 +92,7 @@ def check_retrieval(table: bool = False) -> list[tuple[float, int, str, str]]:
     from src.agent.knowledge import KnowledgeBase
     from src.config import RECORDS_JSON
 
-    section(2, 6, "知识库检索覆盖")
+    section(2, 7, "知识库检索覆盖")
 
     recs = json.loads(RECORDS_JSON.read_text(encoding="utf-8"))
     recs = recs if isinstance(recs, list) else recs["records"]
@@ -140,7 +140,7 @@ def check_retrieval(table: bool = False) -> list[tuple[float, int, str, str]]:
 def check_tools() -> None:
     from src.agent.tools import TOOL_SCHEMAS, ToolRuntime
 
-    section(3, 6, "工具注册")
+    section(3, 7, "工具注册")
 
     names = [t["function"]["name"] for t in TOOL_SCHEMAS]
     check("search_knowledge" in names, "search_knowledge 已注册")
@@ -167,7 +167,7 @@ def check_tools() -> None:
 def check_prompt() -> None:
     from src.agent.cs_agent import SYSTEM_PROMPT
 
-    section(4, 6, "prompt 准则")
+    section(4, 7, "prompt 准则")
 
     check(
         "search_knowledge" in SYSTEM_PROMPT and "知识库" in SYSTEM_PROMPT,
@@ -179,6 +179,35 @@ def check_prompt() -> None:
         "有「不许编」的约束",
         "这条是 v2 那个 A/B 实验的直接产物：一放宽，编造从 3 条涨到 14 条",
     )
+    check(
+        "路径" in SYSTEM_PROMPT and "让你去做" in SYSTEM_PROMPT,
+        "有「问怎么做 ≠ 让你去做」的区分",
+        "第 8 条。#25 就是栽在这上面：问入口路径，它答「我帮你转」",
+    )
+
+
+# ============================================================
+# 4.5 护栏：规则类问题不许裸答
+# ============================================================
+
+
+def check_guard() -> None:
+    from src.agent import cs_agent
+
+    section(5, 7, "护栏 4：规则类问题不许裸答")
+
+    check(
+        hasattr(cs_agent, "_NUDGE_TEXT") and hasattr(cs_agent, "_RULE_Q_RE"),
+        "护栏 4 存在：规则类问题没查资料就想答，会被打回一次",
+        "prompt 是软约束，模型会不听。这一条是代码兜底",
+    )
+
+    src = inspect.getsource(cs_agent.CSAgent.run)
+    check(
+        "nudged" in src and "retrieved" in src,
+        "打回只执行一次，且只认「成功查到」",
+        "retrieved 不认失败的调用 —— 否则知识库没加载时这条护栏就废了",
+    )
 
 
 # ============================================================
@@ -189,7 +218,7 @@ def check_prompt() -> None:
 def check_leak_guard() -> None:
     from src.agent.retrieval import PrecedentIndex
 
-    section(5, 6, "防答案泄漏")
+    section(6, 7, "防答案泄漏")
 
     sig = inspect.signature(PrecedentIndex.search)
     p = sig.parameters.get("exclude_id")
@@ -214,7 +243,7 @@ def check_separation() -> None:
     from src.agent.knowledge import KnowledgeBase
     from src.agent.retrieval import PrecedentIndex
 
-    section(6, 6, "知识 / 判例分工")
+    section(7, 7, "知识 / 判例分工")
 
     kb_sig = inspect.signature(KnowledgeBase.search)
     check(
@@ -254,6 +283,7 @@ def main(argv: list[str]) -> int:
         lambda: check_retrieval(table=table),
         check_tools,
         check_prompt,
+        check_guard,
         check_leak_guard,
         check_separation,
     ]
