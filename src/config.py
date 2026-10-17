@@ -24,10 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"              # 原始表格，只读不改
 PROCESSED_DIR = DATA_DIR / "processed"  # 清洗后的中间产物
+KNOWLEDGE_DIR = DATA_DIR / "knowledge"  # 业务规则知识库（v3 新增）
 OUTPUT_DIR = BASE_DIR / "output"        # 评测结果、导出的报告
 
 RAW_XLSX = RAW_DIR / "客服实测记录.xlsx"
 RECORDS_JSON = PROCESSED_DIR / "records.json"
+KNOWLEDGE_JSON = KNOWLEDGE_DIR / "cs_rules.json"
 
 
 # ============================================================

@@ -84,8 +84,11 @@ def classify_exit(trace: Trace, question: str) -> str:
         return "escalated"
     if trace.failed_tools:
         return "had_tool_error"
-    if _RULE_Q_RE.search(question) and "search_precedents" not in trace.tool_names:
-        # 最值得警惕的一类：该查判例却没查，凭常识答的
+    # v3：知识库和判例库都算「检索」。查了任一就不算跳过 ——
+    # 之前只认 search_precedents，Agent 改用 search_knowledge 后会被全部误判成跳过检索。
+    _RETRIEVAL_TOOLS = {"search_knowledge", "search_precedents"}
+    if _RULE_Q_RE.search(question) and not (_RETRIEVAL_TOOLS & set(trace.tool_names)):
+        # 最值得警惕的一类：该查却没查，凭常识答的
         return "skipped_retrieval"
     if trace.guard_events:
         return "guard_blocked"
@@ -117,7 +120,16 @@ def compute_metrics(traces: list[Trace], records: list[dict]) -> dict:
             round(1 - failed_tools / total_tools, 4) if total_tools else 1.0
         ),
         "guard_blocks": guards,
-        "retrieval_used": sum(1 for t in traces if "search_precedents" in t.tool_names),
+        # v3：知识库和判例库分开统计。两者分工不同，混在一起看不出 Agent 到底在靠什么答。
+        "knowledge_used": sum(1 for t in traces if "search_knowledge" in t.tool_names),
+        "retrieval_used": sum(
+            1
+            for t in traces
+            if {"search_knowledge", "search_precedents"} & set(t.tool_names)
+        ),
+        "precedents_used": sum(
+            1 for t in traces if "search_precedents" in t.tool_names
+        ),
         "escalated": sum(1 for t in traces if t.stopped_reason == "human"),
         "exit_dist": {label: labels.count(label) for label in sorted(set(labels))},
         "questions_with_reference": len(by_id),
@@ -198,7 +210,9 @@ def main() -> int:
     print(f"  工具调用总数        {metrics['tool_calls_total']}（平均 {metrics['avg_tool_calls']} 次/条）")
     print(f"  工具成功率          {metrics['tool_success_rate']:.1%}")
     print(f"  安全闸门拦截        {metrics['guard_blocks']} 次")
-    print(f"  调用了判例检索      {metrics['retrieval_used']} 条")
+    print(f"  调用了知识库        {metrics.get('knowledge_used', 0)} 条")
+    print(f"  调用了判例库        {metrics.get('precedents_used', 0)} 条")
+    print(f"  至少查过一次        {metrics['retrieval_used']} 条")
     print(f"  转人工              {metrics['escalated']} 条")
     print("\n  过程标签分布")
     for label, cnt in metrics["exit_dist"].items():

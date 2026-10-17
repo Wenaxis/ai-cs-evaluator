@@ -38,12 +38,37 @@ TOOL_SCHEMAS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "search_knowledge",
+            "description": (
+                "检索业务规则知识库，拿到回答的事实依据。"
+                "这是回答规则类问题的第一选择，优先级高于 search_precedents。"
+                "凡是「能不能 / 多久 / 怎么操作 / 在哪里看 / 需要什么」这类问题，先查这里。"
+                "返回的是规则条款（含具体口径），可以直接作为答案的骨架。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "检索用问句，直接用用户的原话，不要改写成关键词",
+                    },
+                    "k": {
+                        "type": "integer",
+                        "description": "返回几条，默认 3，一般不用传",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "search_precedents",
             "description": (
-                "在历史真实问答的标准答法库里检索相似案例。"
-                "凡是「通用规则类」问题（能不能退 / 要多久 / 怎么操作 / 在哪里看），"
-                "都应先调这个工具拿到参考口径，再组织回复。"
-                "不要凭常识直接回答规则类问题。"
+                "在历史真实问答的标准答法库里检索相似案例，用于参考「这类问题通常怎么组织回答」。"
+                "知识库没有覆盖时，可以查这里看看有没有可借鉴的表达。"
+                "注意：判例是应答摘要，不保证含完整事实口径。"
             ),
             "parameters": {
                 "type": "object",
@@ -205,11 +230,28 @@ class ToolRuntime:
 
     exclude_id 在构造时就绑死，而不是每次调用时传 —— 判例检索的防泄漏
     （评第 N 条时不能检索到第 N 条自己）因此变成一件「忘不掉」的事。
+
+    kb 是 v3 新增的业务知识库。不传就自动加载 data/knowledge/cs_rules.json；
+    加载失败也不让整个 Agent 崩掉，只是 search_knowledge 会返回一条明确的错误 ——
+    单点数据缺失不该拖垮会话。
     """
 
-    def __init__(self, index: PrecedentIndex, exclude_id: int | None = None) -> None:
+    def __init__(
+        self,
+        index: PrecedentIndex,
+        exclude_id: int | None = None,
+        kb: "KnowledgeBase | None" = None,
+    ) -> None:
         self.index = index
         self.exclude_id = exclude_id
+        if kb is None:
+            try:
+                from src.agent.knowledge import KnowledgeBase
+
+                kb = KnowledgeBase()
+            except Exception:  # noqa: BLE001 - 知识库缺失不该阻断主流程
+                kb = None
+        self.kb = kb
         self.call_log: list[dict] = []  # 本次会话调过哪些工具，供 trace 和评测使用
 
     # ---------- 统一入口 ----------
@@ -254,6 +296,38 @@ class ToolRuntime:
         return "(未知)"
 
     # ---------- 各工具实现 ----------
+
+    def _tool_search_knowledge(self, query: str, k: int = 3) -> dict:
+        """查业务规则知识库。这是回答规则类问题的第一依据。"""
+        if self.kb is None:
+            return {
+                "ok": False,
+                "error": "知识库未加载",
+                "hint": "data/knowledge/cs_rules.json 缺失或格式错误。"
+                "这种情况下请改用 search_precedents，或直接转人工，不要凭空编规则。",
+            }
+
+        try:
+            k = max(1, min(int(k), 5))
+        except (TypeError, ValueError):
+            k = 3
+
+        hits = self.kb.search(query, k=k)
+        if not hits:
+            return {
+                "ok": True,
+                "data": {"rules": [], "count": 0},
+                "hint": "知识库没有覆盖这个问题。可以再用 search_precedents 找找参考表达；"
+                "两者都没有的话，转人工比编一个听起来合理的规则更合适。",
+            }
+
+        return {
+            "ok": True,
+            "data": {"rules": hits, "count": len(hits)},
+            "hint": "以上是业务规则条款，按从上到下的相关度排列。"
+            "请先用第一条作答：结论在前，路径在后，具体数值照条款里的口径说，不要自行加码。"
+            "如果这些条款与用户问题对不上（问的不是同一件事），就当作没查到，不要硬套。",
+        }
 
     def _tool_search_precedents(self, query: str, scene: str | None = None) -> dict:
         hits = self.index.search(
