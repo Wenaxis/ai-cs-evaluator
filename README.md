@@ -1,28 +1,63 @@
 # AI 客服质量评测台
 
-给 AI 客服的应答做自动化质量评测的工具。输入问答记录，输出逐条评分、错因归因和一致性验证报告。
+**一句话：它是一台质检机，外加一个专门用来被质检的 AI 客服。**
 
-用 **规则引擎 + 大模型评审** 混合评分，并以人工标注为基准验证机器的判定有多可信。
+质检机（v1）干的是给客服回复打分：30 条真实问答记录进来，逐条判「答对 / 答偏」，
+给出错因，再用人工标注验证「机器判得准不准」（Kappa 0.9231）。
 
-> **v2 已改造完成**：项目从「评测工具」升级为「AI 客服 Agent + 评测闭环」。  
-> 新增了一个能自己调工具、能多轮、会失败的客服 Agent，再用 v1 的评测能力反过来测它。  
-> 详见文末「v2：从「评测工具」变成「Agent + 评测」」一节。**v1 的全部链路原样保留，指标未被改动。**
+AI 客服（v2/v3）是后来加的：为了证明这套质检标准真的能指导干活，干脆照着它造了一个
+能自己查资料、调工具、在不确定时转人工的客服 Agent，然后用同一台质检机反过来测它。
+现在它答对 30/30，而原来的真人客服是 21/30。
 
-> **第一次读这个项目？先看 [`docs/ONBOARDING.md`](docs/ONBOARDING.md)。**  
-> 那里面有：从零跑起来的完整步骤（分「不需要 Key」和「需要 Key」两段）、  
-> 按数据流分层的代码讲解、四个必须看懂的设计、三个练手改动、一份 10 题自检清单。
->
-> **要把评测真跑一遍、把数字跑出来？看 [`docs/RUN-EVAL.md`](docs/RUN-EVAL.md)。**  
-> 从申请免费 Key 到读懂每个指标，一步一屏，含 Windows 特有的四个坑和一张报错对照表。
->
-> **要验证「改动到底有没有用」？看 [`docs/VERIFY.md`](docs/VERIFY.md)。**  
-> 五层验证，从免费静态自检到控制变量与留出实验，每层给出命令、真实输出和判读标准。
-> 配套三个脚本：`scripts/selfcheck.py`（不联网自检 21 项）、`scripts/show_answer.py`（看回答原文）、
-> `scripts/kb_coverage.py`（查新问题的知识库覆盖率）。
+> 一个必须先说的前提：**这个 30/30 是开卷的。** 知识库里的 30 条规则就是从这 30 条记录里提炼的。
+> 换一批没覆盖的新问题会掉到 50% —— 这个数也是实测的，见 [`docs/VERIFY.md`](docs/VERIFY.md) 第五层。
+
+---
+
+## 3 分钟跑起来（不花钱、不联网）
+
+```bash
+# 1. 装依赖（只做一次）
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+
+# 2. 三条命令，从代码状态到真实基线
+.venv/Scripts/python.exe -m pytest tests/ -q          # 37 个测试
+.venv/Scripts/python.exe scripts/selfcheck.py         # 21 项自检（不调模型）
+.venv/Scripts/python.exe -m src.analyze               # 复现 v1 基线：Kappa 0.9231
+```
+
+这三条跑通，说明环境、代码、数据都没问题。**跑不通就是环境问题，不是 Key 问题。**
+
+想真跑一遍 Agent（要花几毛钱、要一个免费 Key），走 [`docs/RUN-EVAL.md`](docs/RUN-EVAL.md)，
+四条约 3 分钟：
+
+```bash
+.venv/Scripts/python.exe -m src.eval.runner       # 30 条用例，Agent 逐条应答，收轨迹
+.venv/Scripts/python.exe -m src.eval.judge        # 评测 Agent 读轨迹打分
+.venv/Scripts/python.exe -m src.eval.report_v3    # 绝对质量：答对几条、修好几条、弄坏几条
+.venv/Scripts/python.exe scripts/show_answer.py --id 7,25   # 看回答原文
+```
+
+---
+
+## 五份文档，什么时候看哪份
+
+| 文档 | 什么时候看 | 花多久 |
+|---|---|---|
+| [`ONBOARDING.md`](docs/ONBOARDING.md) | **第一次读代码。** 按数据流分层讲，不按文件名 | 3-4 小时 |
+| [`RUN-EVAL.md`](docs/RUN-EVAL.md) | 要真跑出数字。含申请 Key、Windows 的四个坑、报错对照表 | 40 分钟 |
+| [`VERIFY.md`](docs/VERIFY.md) | 要证明「改动真的有用」。五层验证，从免费自检到留出实验 | 20 分钟 |
+| [`ABLATION.md`](docs/ABLATION.md) | 想知道「为什么这么设计」。四组对照实验的完整记录 | 30 分钟 |
+| `README.md`（本文） | 先扫一眼整体，以及各版本的结果 | 10 分钟 |
+
+如果只有 10 分钟，看本文的「核心结论」和三张结果表就够。
 
 ---
 
 ## 核心结论
+
+先说质检机（v1）本身靠不靠谱 —— 一台判不准的机器，测什么都没意义。
 
 在 30 轮真实实测问答上（支付宝「我的客服」）的评测结果：
 
