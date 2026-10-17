@@ -19,10 +19,19 @@
 
 打开终端，进到项目目录（就是有 `README.md` 和 `requirements.txt` 的那一层）：
 
+> **用 PowerShell 的话，先跑这一行**，否则后面所有中文输出都是乱码。
+> 实测 `chcp 65001` 不管用，必须设 `[Console]::OutputEncoding`：
+>
+> ```powershell
+> [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+> ```
+>
+> Git Bash 不需要这一步。路径里的 `/` 两个终端都认，不用改。
+
 ```bash
 cd ai-cs-evaluator
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
 
 三行分别在干什么：
@@ -33,13 +42,13 @@ python -m venv .venv
 | `pip install -r requirements.txt` | 照着清单把要用的库都装上 |
 | `-i https://mirrors.aliyun.com/...` | 用阿里云的镜像下载。国内直连官方源很慢，不加这个可能等到天荒地老 |
 
-> 后面所有命令里的 `python`，都指 `.venv/Scripts/python`。嫌长可以先激活环境
+> 后面所有命令里的 `python`，都指 `.venv/Scripts/python.exe`。嫌长可以先激活环境
 > （Windows 下执行 `.venv\Scripts\activate`），激活后直接敲 `python` 就行。
 
 ### 1.2 跑测试（最先做这个）
 
 ```bash
-.venv/Scripts/python -m pytest tests/ -q
+.venv/Scripts/python.exe -m pytest tests/ -q
 ```
 
 **预期看到**：`37 passed`（37 个测试全部通过）。
@@ -50,7 +59,7 @@ python -m venv .venv
 ### 1.3 跑离线冒烟测试
 
 ```bash
-.venv/Scripts/python scripts/mock_run.py
+.venv/Scripts/python.exe scripts/mock_run.py
 ```
 
 **预期看到**：
@@ -78,7 +87,7 @@ python -m venv .venv
 ### 1.4 复现 v1 的基线
 
 ```bash
-.venv/Scripts/python -m src.analyze
+.venv/Scripts/python.exe -m src.analyze
 ```
 
 **预期看到**：
@@ -120,13 +129,13 @@ LLM_MODEL=deepseek-chat
 
 ```bash
 # 先跑 3 条试水（省时间、省额度）
-.venv/Scripts/python -m src.eval.runner --limit 3
+.venv/Scripts/python.exe -m src.eval.runner --limit 3
 
 # 没问题了再跑满 36 条
-.venv/Scripts/python -m src.eval.runner
+.venv/Scripts/python.exe -m src.eval.runner
 
 # 让评测 Agent 读轨迹打分，并和 v1 基线并排对比
-.venv/Scripts/python -m src.eval.judge
+.venv/Scripts/python.exe -m src.eval.judge
 ```
 
 `src.eval.runner` 会打印每条用例的**一行摘要**，长这样：
@@ -336,7 +345,7 @@ if not user_confirmed:
 2. 写一个 `detect_xxx` 函数（模仿 `detect_no_substance`）
 3. 把它加进 `RULE_SPECS` 列表，想一个扣分数
 
-改完跑 `.venv/Scripts/python -m src.rules` 看结果变化。
+改完跑 `.venv/Scripts/python.exe -m src.rules` 看结果变化。
 **记得最后把扣分改回去或删掉** —— 否则 v1 的基线就变了。
 
 ### 练习 2：改 Agent 的行为准则（1 小时）
@@ -348,7 +357,7 @@ if not user_confirmed:
 改完跑：
 
 ```bash
-.venv/Scripts/python -m src.eval.runner --limit 5
+.venv/Scripts/python.exe -m src.eval.runner --limit 5
 ```
 
 看行为有没有变化。**这就是 prompt 工程的实际工作方式**：改一版 → 跑评测 → 看数字。
@@ -396,7 +405,7 @@ if not user_confirmed:
 
 **坑 1：改了代码，基线变了**
 
-跑一下 `.venv/Scripts/python -m src.analyze`，看还是不是 96.7% / 0.9231。
+跑一下 `.venv/Scripts/python.exe -m src.analyze`，看还是不是 96.7% / 0.9231。
 不是的话，检查你是不是动了 `rules.py` 的扣分权重或 `config.py` 里的 `WEIGHT_RULE`。
 
 **坑 2：`ModuleNotFoundError: No module named 'src'`**

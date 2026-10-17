@@ -16,15 +16,31 @@ AI 客服（v2/v3）是后来加的：为了证明这套质检标准真的能指
 
 ## 3 分钟跑起来（不花钱、不联网）
 
-```bash
-# 1. 装依赖（只做一次）
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+**PowerShell 里第一行必须设编码**，否则中文全是乱码（`chcp 65001` 不管用，实测过）：
 
-# 2. 三条命令，从代码状态到真实基线
-.venv/Scripts/python.exe -m pytest tests/ -q          # 37 个测试
-.venv/Scripts/python.exe scripts/selfcheck.py         # 21 项自检（不调模型）
-.venv/Scripts/python.exe -m src.analyze               # 复现 v1 基线：Kappa 0.9231
+```powershell
+cd D:\BaiduNetdiskDownload\2026-10-17-00-56-05\ai-cs-evaluator
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+.venv\Scripts\python.exe -m pytest tests\ -q          # 37 个测试
+.venv\Scripts\python.exe scripts\selfcheck.py         # 21 项自检（不调模型）
+.venv\Scripts\python.exe -m src.analyze               # 复现 v1 基线：Kappa 0.9231
+```
+
+Git Bash 里不用设编码，路径换个写法即可：
+
+```bash
+cd /d/BaiduNetdiskDownload/2026-10-17-00-56-05/ai-cs-evaluator
+.venv/Scripts/python.exe -m pytest tests/ -q
+.venv/Scripts/python.exe scripts/selfcheck.py
+.venv/Scripts/python.exe -m src.analyze
+```
+
+`.venv` 已经建好了，不用重新 `python -m venv`。换电脑或删了才需要重建：
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
 
 这三条跑通，说明环境、代码、数据都没问题。**跑不通就是环境问题，不是 Key 问题。**
@@ -204,7 +220,7 @@ ai-cs-evaluator/
 
 ```bash
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
 > 国内网络建议加镜像：`-i https://mirrors.aliyun.com/pypi/simple/`

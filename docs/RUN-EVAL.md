@@ -821,7 +821,7 @@ v2 是建在 v1 上的。如果面试要你讲「Kappa 是怎么算出来的」�
 | `HTTP 404 model not found` | 模型名拼错，或账号没这个模型权限 | 智谱用 `glm-4-flash`，DeepSeek 用 `deepseek-chat` |
 | `HTTP 429` | 触发限流 | 代码有退避重试，会自动等。连续 429 就隔几分钟再跑 |
 | `HTTP 400 response_format` | 模型不支持强制 JSON 输出 | 调用 `chat()` 时传 `force_json=False`，或换模型 |
-| 中文输出全是乱码 | 终端编码是 GBK | 换 PowerShell；或先执行 `chcp 65001` |
+| 中文输出全是乱码 | PowerShell 的管道按 GBK 解码 UTF-8 | 先执行 `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`。**实测有效**；`chcp 65001` 对本项目的输出**不管用**，换 PowerShell 也不管用 —— 因为它本来就在 PowerShell 里 |
 | `streamlit: command not found` | 没用 venv 的 python | 用 `.venv/Scripts/python.exe -m streamlit run app.py` |
 | 改了 prompt 但结果没变 | 有缓存 | 关掉终端重开，最稳 |
 | 跑一半断了 | 网络抖动 / 额度用完 | 看 `llm_error` 那几条的报错原文，额度用完就去控制台看余额 |
