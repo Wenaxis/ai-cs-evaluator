@@ -275,7 +275,7 @@ python -m pytest tests/ -v
 
 # 2. 让 Agent 跑测试集，收轨迹 + 过程指标
 python -m src.eval.runner --limit 3      # 第一次先跑 3 条试水
-python -m src.eval.runner                # 跑满 36 条
+python -m src.eval.runner                # 跑满 30 条单轮
 
 # 3. 评测 Agent 读轨迹打分，并与 v1 基线对比
 python -m src.eval.judge
@@ -286,6 +286,35 @@ uvicorn src.api.main:app --reload --port 8000
 # 5. 作为 MCP Server 启动，供 Claude Desktop / Cursor 等客户端接入
 python -m src.mcp_server
 ```
+
+### 跑出来是什么样
+
+在 30 条单轮用例上真跑（`deepseek-chat`）。实测消耗：runner 单轮约 **10 万 token / 95 秒**，
+评测 Agent 再跑一遍约 40 秒。下表是两轮对照：
+
+| 指标 | 原版约束 | 放宽约束后 |
+|---|---|---|
+| 转人工 | 16 条（53.3%） | 0 条 |
+| 一致率 | 33.3% | 70.0% |
+| **Cohen's Kappa** | **−0.2048** | **0.0** |
+| 误伤 / 漏检 | 15 / 5 | 0 / 9 |
+| `fabricated_info`（编造） | 3 | 14 |
+
+**这张表里最该看的是 Kappa，不是一致率。** 放宽约束后一致率翻了一倍，Kappa 却停在 0.0 —— 意思是「和瞎猜一样」。
+
+验证过：一个「永远输出答对」的零逻辑程序，准确率也是 70%、Kappa 也是 0.0，和改词后的 Agent 指标完全相同。
+代价是编造从 3 条涨到 14 条、9 条真实缺陷全部漏检。
+
+所以**保留了原版约束**（宁可转人工也不编），把宽松版留作对照数据。
+完整的现象、根因和结论写在 [`docs/ABLATION.md`](docs/ABLATION.md)。
+
+**一个必须说明的局限**：判例库就是这 30 条里判对的 21 条，`exclude_id` 排除当前条之后，
+剩下的 20 条讲的是另外 20 个知识点。加上判例里存的是「应答摘要」而非答案本身，
+Agent 在库外问题上没有事实可依 —— 要么转人工，要么编。这个死局不是 prompt 能解的，
+需要一份独立于测试集的知识源。见 `docs/ABLATION.md` 第四节。
+
+> 另：`dataset.build_all()` 定义了 36 条（30 单轮 + 6 多轮），但 `runner.py` 直接读
+> `records.json` 的 30 条，那 6 条多轮用例尚未接入执行器。这是已知的未完成项。
 
 ---
 
@@ -301,7 +330,7 @@ python -m src.mcp_server
 | 工具调用 / 任务拆解 / 多轮对话      | ReAct 循环 + 5 个工具 + `history` 多轮    | `src/agent/cs_agent.py`           |
 | MCP / CLI 集成            | 工具集暴露为标准 MCP Server                | `src/mcp_server.py`               |
 | FastAPI / 基础后端能力        | `/chat`、`/evaluate`、`/health` 三个端点 | `src/api/main.py`                 |
-| 评测任务集构建                 | 36 条评测集（30 条真实实测 + 6 条多轮），带预期工具    | `src/eval/dataset.py`             |
+| 评测任务集构建                 | 30 条单轮已接入执行器；另 6 条多轮已定义但未接入（见下方说明） | `src/eval/dataset.py`             |
 | 任务完成率 / 工具调用准确性 / 用户满意度 | 三个维度全部实现                           | `src/eval/metrics.py`             |
 | 数据清洗                    | v1 的 loader 保留，另加评测集构建             | `src/loader.py`                   |
 
@@ -325,7 +354,8 @@ LangGraph 在这里的价值也说清楚：**不是少写代码**（声明式状
 ### 还没做的（下一步）
 
 - **看板的 v2 页面**：回归对比视图还没做（`app.py` 目前还是 v1 的看板）
-- **消融实验**：换模型、关掉判例检索、关掉重排，各跑一遍看指标怎么变 ——  
+- **消融实验**：第一轮（约束强度对比）已经做完，见 [`docs/ABLATION.md`](docs/ABLATION.md)。
+  还没做的是换模型、关掉判例检索、关掉重排这几种，各跑一遍看指标怎么变 ——  
   这是把「为什么这么设计」变成数字的一步，也是最有说服力的一步
 - **评测集扩充**：多轮用例目前 6 条，是从真实缺陷模式造的，可以再扩
 - **延迟与成本基线**：`/chat` 目前没有响应时间与 token 成本的实测数据
