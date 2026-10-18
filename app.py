@@ -149,7 +149,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"评分满分：{MAX_SCORE} 分")
-    st.caption("数据来源：30 轮支付宝「我的客服」实测记录")
+    st.caption("数据来源：30 轮某第三方支付平台的在线客服实测记录")
     st.caption("人工标注：答对 21 / 答偏 9")
 
 df, agg, kappa = recompute(records, rule_map, llm_map, w_rule, w_llm, threshold)

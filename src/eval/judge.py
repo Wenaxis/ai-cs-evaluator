@@ -18,7 +18,7 @@
 
 一个刻意的设计：评测量表直接沿用 v1 的（import src.prompts 里的 RUBRIC）。
     标准不变，v1 和 v2 的分数才有可比性 ——
-    「同一把尺子，量支付宝的客服，也量我们的 Agent」。尺子一换，对比就作废了。
+    「同一把尺子，量这家平台的客服，也量我们的 Agent」。尺子一换，对比就作废了。
 
 运行方式（项目根目录，需先跑完 src.eval.runner）：
     python -m src.eval.judge

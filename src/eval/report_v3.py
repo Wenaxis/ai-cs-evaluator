@@ -26,7 +26,7 @@ v3 的 Agent 接入了业务知识库，实测把原客服答偏的 9 条全部�
     知识库和评测集同源（30 个主题对应 30 道题）。这是开卷评测 ——
     考的是「能不能检索到并对上号」，不是「记不记得住」。
     真实产品里知识库本来就该独立于用户提问，这里因为数据只有这一份，
-    只能做到「形式上独立、来源上同源」。面试被问到要主动说明。
+    只能做到「形式上独立、来源上同源」。被问到要主动说明。
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def build_report() -> dict:
         "baseline_customer_service": {
             "pass": human_pass_n,
             "pass_rate": round(human_pass_n / n, 4) if n else 0.0,
-            "label_note": "来自人工标注，衡量的是支付宝原客服在实测中的表现",
+            "label_note": "来自人工标注，衡量的是原客服在实测中的表现",
         },
         "comparison": {
             "fixed_ids": fixed,
