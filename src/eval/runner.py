@@ -17,8 +17,8 @@ v2 的入口是「把测试集丢给 Agent，让它自己跑，自动收轨迹�
     只看结果指标，你发现不了这种「靠运气对」的情况。
 
 运行方式（项目根目录）：
-    python -m src.runner                # 跑全部 30 条
-    python -m src.runner --limit 3      # 先跑 3 条试水（强烈建议第一次这么跑）
+    python -m src.eval.runner                # 跑全部 30 条
+    python -m src.eval.runner --limit 3      # 先跑 3 条试水（强烈建议第一次这么跑）
 """
 
 from __future__ import annotations
@@ -36,7 +36,6 @@ from src.config import (
     LLM_API_KEY,
     LLM_MODEL,
     OUTPUT_DIR,
-    PRECEDENT_TOP_K,
     RECORDS_JSON,
     RULE_QUESTION_RE_PATTERN,
 )

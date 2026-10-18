@@ -56,7 +56,14 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(..., description="用户这一轮说的话")
     history: list[Message] = Field(default_factory=list, description="之前的对话，可为空")
-    engine: str = Field("graph", description="用哪个编排：graph（LangGraph）或 loop（手写）")
+    engine: str = Field(
+        "loop",
+        description=(
+            "用哪个编排：loop（手写 ReAct，默认）或 graph（LangGraph 对照实现）。"
+            "默认 loop 是因为 30/30 的评测结果是在 loop 上跑出来的，"
+            "且第 4 层护栏（规则类问题不许裸答）目前只在 loop 里。"
+        ),
+    )
     include_trace: bool = Field(False, description="是否返回完整执行轨迹")
 
 
@@ -208,5 +215,12 @@ def evaluate_endpoint(req: EvalRequest) -> dict:
         verdicts[case.case_id] = {"score": 4 if tr.stopped_reason == "answered" else 2}
 
     report = build_report(cases, traces, verdicts)
-    report["note"] = "verdicts 此处由 stopped_reason 粗略映射；正式评测请走 src.eval.runner + judge"
+    # 这一步只负责「跑」，不负责「评」——评测本身要再调一次模型，不该塞进同一个请求。
+    # 所以下面这份报告里的完成率是占位值，必须把它标出来，别让人当成质量结论。
+    report["metrics_are_placeholder"] = True
+    report["note"] = (
+        "verdicts 未经过评测 Agent 打分，score 只按「是否正常收口」映射（4/2），"
+        "因此 task_completion 等于「收口率」，不代表应答质量。"
+        "正式评测请走 src.eval.runner + src.eval.judge + src.eval.report_v3。"
+    )
     return report

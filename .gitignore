@@ -7,8 +7,14 @@ __pycache__/
 # 密钥 —— 绝对不能提交，这条是底线
 .env
 
-# 输出产物（全部是跑出来的结果，可由代码+数据重建）
-output/
+# 输出产物（跑出来的结果，可由代码+数据重建）
+output/*
+# 例外：v1 基线的两份中间结果。
+# 提交它们不是偷懒 —— 是为了让人 clone 下来直接跑 `python -m src.analyze`
+# 复现 Kappa 0.9231，不需要 Key、不花钱。否则这条命令在干净仓库上必然报缺文件。
+# 想从原始数据重新生成，跑 src.rules + src.llm_judge 覆盖即可（后者要 Key）。
+!output/rule_results.json
+!output/llm_results.json
 
 # 向量库持久化目录（Chroma 的本地索引，体积大且可重建）
 data/vector_store/

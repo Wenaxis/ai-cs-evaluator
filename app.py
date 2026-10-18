@@ -29,7 +29,6 @@ from src.config import (
     OUTPUT_DIR,
     PASS_THRESHOLD,
     RECORDS_JSON,
-    WEIGHT_LLM,
     WEIGHT_RULE,
 )
 
@@ -150,7 +149,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(f"评分满分：{MAX_SCORE} 分")
-    st.caption(f"数据来源：30 轮支付宝「我的客服」实测记录")
+    st.caption("数据来源：30 轮支付宝「我的客服」实测记录")
     st.caption("人工标注：答对 21 / 答偏 9")
 
 df, agg, kappa = recompute(records, rule_map, llm_map, w_rule, w_llm, threshold)
@@ -237,7 +236,7 @@ else:
         kind = "漏检（机器放过，人工判偏）" if r["机器判定"] == "答对" else "误伤（机器判偏，人工判对）"
         with st.expander(f"第 {r['序号']} 条 · {kind} · 最终分 {r['最终分']}"):
             st.write(f"**提问**：{r['提问']}")
-            st.write(f"**应答摘要**：{r['规则分']} 分（规则） / {r['大模型分']} 分（大模型）")
+            st.write(f"**评分**：规则 {r['规则分']} 分 / 大模型 {r['大模型分']} 分 → 最终 {r['最终分']} 分")
             st.write(f"**大模型理由**：{r['大模型理由']}")
             st.write(f"**大模型标签**：{r['大模型标签']}")
 

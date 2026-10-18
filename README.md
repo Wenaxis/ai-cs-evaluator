@@ -86,6 +86,11 @@ Git Bash 里不用设编码，路径换个写法即可：
 
 这三条跑通，说明环境、代码、数据都没问题。**跑不通就是环境问题，不是 Key 问题。**
 
+> 第三条之所以不花钱，是因为 `output/rule_results.json` 和 `output/llm_results.json`
+> 这两份基线结果随仓库一起提交了 —— `src.analyze` 读的是它们，不调接口。
+> 想从原始数据重新生成判分，先跑 `src.rules`（纯规则，免费），
+> 再跑 `src.llm_judge`（要 Key）；两份都会被覆盖，`src.analyze` 的结果应当仍是 Kappa 0.9231。
+
 想真跑一遍 Agent（要花几毛钱、要一个免费 Key），走 [`docs/RUN-EVAL.md`](docs/RUN-EVAL.md)，
 四条约 3 分钟：
 

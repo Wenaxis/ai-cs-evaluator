@@ -15,7 +15,6 @@
 
 import json
 import sys
-from collections import Counter
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -217,7 +216,7 @@ def main() -> int:
     agg = final["agreement"]
     kappa = final["kappa"]
 
-    print(f"\n[1/2] 生成汇总表 ...")
+    print("\n[1/2] 生成汇总表 ...")
     wb = Workbook()
     build_summary(wb.active, agg, kappa, records)
     wb.active.title = "评测汇总"

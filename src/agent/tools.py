@@ -23,9 +23,15 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from src.agent.retrieval import PrecedentIndex
+
+if TYPE_CHECKING:
+    # 只在类型标注里用，运行时不导入：knowledge 会去读 data/knowledge 下的数据文件，
+    # 模块加载期就把它拉起来，等于给「工具集」绑了一个可选数据依赖。
+    from src.agent.knowledge import KnowledgeBase
 
 
 # ============================================================
@@ -240,7 +246,7 @@ class ToolRuntime:
         self,
         index: PrecedentIndex,
         exclude_id: int | None = None,
-        kb: "KnowledgeBase | None" = None,
+        kb: KnowledgeBase | None = None,
     ) -> None:
         self.index = index
         self.exclude_id = exclude_id

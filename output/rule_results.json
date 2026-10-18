@@ -1,0 +1,250 @@
+[
+  {
+    "id": 1,
+    "rule_score": 2.4,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「让核对」：未直接给结论，把问题推到查询/操作环节"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 3,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 4,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 5,
+    "rule_score": 2.4,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「转而」：未直接给结论，把问题推到查询/操作环节"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 7,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 8,
+    "rule_score": 0.2,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「导流」：未直接给结论，把问题推到查询/操作环节"
+      },
+      {
+        "rule": "R2 缺时间口径",
+        "deduct": 2.2,
+        "detail": "问的是时效，但回答里没有任何具体时间口径"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 10,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 11,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 12,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 13,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 14,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 15,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 16,
+    "rule_score": 3.2,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R3 缺操作路径",
+        "deduct": 1.8,
+        "detail": "问的是操作方法，但回答里没有可照做的路径或入口"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 18,
+    "rule_score": 2.4,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「转为查询」：未直接给结论，把问题推到查询/操作环节"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "rule_score": 0.2,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「转向查询」：未直接给结论，把问题推到查询/操作环节"
+      },
+      {
+        "rule": "R2 缺时间口径",
+        "deduct": 2.2,
+        "detail": "问的是时效，但回答里没有任何具体时间口径"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 21,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 22,
+    "rule_score": 0.6,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R1 导流甩锅",
+        "deduct": 2.6,
+        "detail": "命中「转为查询」：未直接给结论，把问题推到查询/操作环节"
+      },
+      {
+        "rule": "R3 缺操作路径",
+        "deduct": 1.8,
+        "detail": "问的是操作方法，但回答里没有可照做的路径或入口"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 24,
+    "rule_score": 0.2,
+    "rule_label": "答偏",
+    "hits": [
+      {
+        "rule": "R2 缺时间口径",
+        "deduct": 2.2,
+        "detail": "问的是时效，但回答里没有任何具体时间口径"
+      },
+      {
+        "rule": "R5 无实质内容",
+        "deduct": 2.6,
+        "detail": "命中「直接弹出人工」：没有给出实质答复"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 26,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 27,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 28,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 29,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  },
+  {
+    "id": 30,
+    "rule_score": 5,
+    "rule_label": "答对",
+    "hits": []
+  }
+]

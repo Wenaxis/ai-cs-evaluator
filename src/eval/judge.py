@@ -20,9 +20,9 @@
     标准不变，v1 和 v2 的分数才有可比性 ——
     「同一把尺子，量支付宝的客服，也量我们的 Agent」。尺子一换，对比就作废了。
 
-运行方式（项目根目录，需先跑完 src.runner）：
-    python -m src.judge_agent
-    python -m src.judge_agent --limit 3
+运行方式（项目根目录，需先跑完 src.eval.runner）：
+    python -m src.eval.judge
+    python -m src.eval.judge --limit 3
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ import time
 from src.analyze import agreement, cohen_kappa
 from src.agent.retrieval import build_index
 from src.config import LLM_API_KEY, LLM_MODEL, OUTPUT_DIR, RECORDS_JSON
-from src.llm_client import LLMError, UsageMeter, chat
+from src.llm_client import LLMError, chat
 from src.prompts import REASON_TAGS, RUBRIC
 
 TRACES_JSON = OUTPUT_DIR / "traces.json"
@@ -283,7 +283,6 @@ def main() -> int:
     print(f"\n模型：{LLM_MODEL}")
     print(f"待评轨迹：{len(traces)} 条\n")
 
-    meter = UsageMeter()
     results = []
     for i, t in enumerate(traces, 1):
         rid = t["case_id"]
@@ -295,7 +294,8 @@ def main() -> int:
         refs = index.search(record["question"], k=2, exclude_id=rid)
 
         try:
-            # judge_one 内部自己管重试；这里的 meter 直接累加 chat 的用量
+            # 评测这一路的 token 不做统计：它和 Agent 跑用例是两笔账，
+            # 混在一起就回答不了「Agent 跑一遍多少钱」。
             verdict = judge_one(record, t, refs)
             row = {"id": rid, "question": record["question"],
                    "human_label": record["human_label"], **verdict}
@@ -331,10 +331,13 @@ def main() -> int:
         print(f"    {k:<20}{v}")
 
     print("\n" + "-" * 62)
-    print("对比 v1 基线（支付宝「我的客服」的实测应答）")
-    print(f"  {'':<18}{'v1 基线':<14}{'v2 Agent'}")
-    print(f"  {'一致率':<18}{'96.7%':<14}{summary['accuracy']:.1%}")
-    print(f"  {'Cohen Kappa':<18}{'0.9231':<14}{summary['kappa']}")
+    # 这里故意不再和 v1 的 96.7% / 0.9231 并列比较。
+    # 那套指标衡量的是「机器判官与人工标注的一致性」，评的是**别人的应答**。
+    # 拿它评 Agent 会得到荒谬的结果：Agent 把原客服答错的题答对了，
+    # 人工标注是「答偏」、机器判「答对」，被记成「漏检」—— 表现越好，指标越难看。
+    # 正确的读法见 src.eval.report_v3：绝对答对数 / 修好几条 / 弄坏几条。
+    print("注意：上面的 Kappa 和一致率不能当 Agent 的分数用（口径不同，见 report_v3 文件头）。")
+    print("      要看 Agent 到底好不好，跑：python -m src.eval.report_v3")
     print("-" * 62)
     print(f"\n结果已写出：{JUDGE_JSON.name}")
     return 0

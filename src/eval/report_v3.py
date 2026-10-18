@@ -35,11 +35,10 @@ import json
 import sys
 from pathlib import Path
 
-from src.config import OUTPUT_DIR, RECORDS_JSON
+from src.config import OUTPUT_DIR
 
 JUDGE_JSON = OUTPUT_DIR / "agent_judge_results.json"
 METRICS_JSON = OUTPUT_DIR / "agent_metrics.json"
-TRACES_JSON = OUTPUT_DIR / "traces.json"
 REPORT_JSON = OUTPUT_DIR / "agent_quality_report.json"
 
 PASS_THRESHOLD = 4  # 量表 5 分制，≥4 视为答对（与前序口径一致）
@@ -58,7 +57,6 @@ def _load(path: Path) -> dict | list:
 def build_report() -> dict:
     judge = _load(JUDGE_JSON)
     results = judge["results"] if isinstance(judge, dict) else judge
-    traces = {t["case_id"]: t for t in _load(TRACES_JSON)}
     metrics = _load(METRICS_JSON)
     rows: list[dict] = []
     for r in results:
