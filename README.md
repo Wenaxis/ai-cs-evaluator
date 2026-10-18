@@ -88,8 +88,12 @@ Git Bash 里不用设编码，路径换个写法即可：
 
 > 第三条之所以不花钱，是因为 `output/rule_results.json` 和 `output/llm_results.json`
 > 这两份基线结果随仓库一起提交了 —— `src.analyze` 读的是它们，不调接口。
-> 想从原始数据重新生成判分，先跑 `src.rules`（纯规则，免费），
-> 再跑 `src.llm_judge`（要 Key）；两份都会被覆盖，`src.analyze` 的结果应当仍是 Kappa 0.9231。
+>
+> 这两份的性质不一样，得分清：
+> `rule_results.json` 是纯代码产物，重跑 `src.rules` 会逐字节重新生成；
+> `llm_results.json` 是大模型判定的**快照**，重跑 `src.llm_judge`（要 Key）虽然温度设的是 0，
+> 也不保证逐字复现 —— 分数可能有出入，Kappa 大概率在 0.92 附近但不保证仍是 0.9231。
+> 换句话说：**上面这个数字来自这份快照，不是每次跑都能一模一样地重现。**
 
 想真跑一遍 Agent（要花几毛钱、要一个免费 Key），走 [`docs/RUN-EVAL.md`](docs/RUN-EVAL.md)，
 四条约 3 分钟：
